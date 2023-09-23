@@ -48,23 +48,27 @@ pipeline {
       }
     }
     stage('Update Deployment File') {
-        environment {
-            GIT_REPO_NAME = "ARGO-CICD"
-            GIT_USER_NAME = "rkeram"
+    environment {
+        GIT_REPO_NAME = "ARGO-CICD"
+        GIT_USER_NAME = "rkeram"
+        GIT_BRANCH_NAME = "update-deployment-${BUILD_NUMBER}" // Create a unique branch for each build
+    }
+    steps {
+        script {
+            // Switch to a new branch or create it if it doesn't exist
+            sh "git checkout -b ${GIT_BRANCH_NAME} || git checkout ${GIT_BRANCH_NAME}"
+            
+            sh '''
+                git config user.email "roshankeram@gmail.com"
+                git config user.name "Roshan Keram"
+                BUILD_NUMBER=${BUILD_NUMBER}
+                sed -i "s/\*/${BUILD_NUMBER}/g" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+                git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+                git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} ${GIT_BRANCH_NAME}
+            '''
         }
-        steps {
-            withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
-                sh '''
-                    git config user.email "roshankeram@gmail.com"
-                    git config user.name "Roshan Keram"
-                    BUILD_NUMBER=${BUILD_NUMBER}
-                    sed -i \"s/\\*/\${BUILD_NUMBER}/g\" java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-                    git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-                    git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:master
-                '''
-            }
-        }
+      }
     }
   }
 }
